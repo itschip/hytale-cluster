@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: hytale-server
+spec:
+  serviceName: "hytale"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hytale
+  template:
+    metadata:
+      labels:
+        app: hytale
+    spec:
+      containers:
+      - name: hytale
+        tty: true
+        stdin: true
+        image: registry.gitlab.com/tropshicher/hytale-cluster:latest
+        ports:
+        - containerPort: 5520
+          name: game-port
+        - containerPort: 7003
+          name: prometheus
+        volumeMounts:
+        - name: data
+          mountPath: /app/data
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: hytale-data

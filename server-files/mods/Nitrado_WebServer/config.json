@@ -1,0 +1,7 @@
+{
+  "BindHost": "0.0.0.0",
+  "BindPort": 7003,
+  "Tls": {
+    "Insecure": true
+  }
+}

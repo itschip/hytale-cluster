@@ -1,0 +1,20 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: hytale-restarter
+  namespace: default
+spec:
+  schedule: "0 */8 * * *" # Every 8 hours
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: restart-bot
+          containers:
+          - name: restarter
+            image: bitnami/kubectl:latest
+            command:
+            - /bin/sh
+            - -c
+            - kubectl rollout restart statefulset hytale-server
+          restartPolicy: OnFailure

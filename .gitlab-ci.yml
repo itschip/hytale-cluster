@@ -1,0 +1,71 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  IMAGE_NAME: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+  IMAGE_LATEST: "$CI_REGISTRY_IMAGE:latest"
+
+build-image:
+  stage: build
+  image: "docker:24.0.5"
+  services:
+    - "docker:24.0.5-dind"
+  script:
+    - "docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY"
+    - "docker build -t $IMAGE_NAME -t $IMAGE_LATEST ."
+    - "docker push $IMAGE_NAME"
+    - "docker push $IMAGE_LATEST"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - Dockerfile
+        - src/**/*
+        - start.sh
+        - go.mod
+        - go.sum
+
+.deploy_template:
+  stage: deploy
+  image:
+    name: "bitnami/kubectl:latest"
+    entrypoint: [""]
+  before_script:
+    - "if [ -z \"$KUBECONFIG\" ]; then echo \"KUBECONFIG is missing\"; exit 1; fi"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+deploy-hytale:
+  extends: .deploy_template
+  script:
+    - "sed -i \"s|image: registry.gitlab.com/tropshicher/hytale-cluster:latest|image: $IMAGE_NAME|g\" kubernetes/base/statefulset.yaml"
+    - "kubectl apply -f kubernetes/base/"
+    - "kubectl rollout status statefulset/hytale-server"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - kubernetes/base/**/*
+        - Dockerfile
+        - start.sh
+        - src/**/*
+        - go.mod
+        - go.sum
+
+deploy-monitoring:
+  extends: .deploy_template
+  script:
+    - "kubectl apply -f kubernetes/monitoring/"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - kubernetes/monitoring/**/*
+
+deploy-platform:
+  extends: .deploy_template
+  script:
+    - "kubectl apply -f kubernetes/platform/namespace.yaml"
+    - "kubectl apply -f kubernetes/platform/"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - kubernetes/platform/**/*

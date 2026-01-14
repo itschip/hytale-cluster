@@ -1,0 +1,18 @@
+# Hytale data
+server-files/universe/
+server-files/logs/
+server-files/backups/
+server-files/temp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Java/IDE
+*.class
+.project
+.settings/
+.classpath
+.idea/
+*.iml
+kubernetes/platform/secrets.yaml

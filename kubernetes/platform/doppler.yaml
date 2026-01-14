@@ -1,0 +1,13 @@
+apiVersion: secrets.doppler.com/v1alpha1
+kind: DopplerSecret
+metadata:
+  name: fivemanage-doppler-secret
+  namespace: platform
+spec:
+  project: lite-hytale
+  config: prd
+  tokenSecret:
+    name: doppler-token-auth
+  managedSecret:
+    name: fivemanage-secrets
+    type: Opaque

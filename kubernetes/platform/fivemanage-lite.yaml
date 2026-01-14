@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fivemanage-lite
+  namespace: platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fivemanage-lite
+  template:
+    metadata:
+      labels:
+        app: fivemanage-lite
+    spec:
+      initContainers:
+      - name: create-bucket
+        image: minio/mc
+        env:
+        - name: MINIO_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: fivemanage-secrets
+              key: MINIO_ROOT_PASSWORD
+        - name: AWS_BUCKET
+          valueFrom:
+            secretKeyRef:
+              name: fivemanage-secrets
+              key: AWS_BUCKET
+        command: ["/bin/sh", "-c", "mc alias set myminio http://minio:9000 minioadmin $MINIO_ROOT_PASSWORD; mc mb --ignore-existing myminio/$AWS_BUCKET; mc anonymous set download myminio/$AWS_BUCKET;"]
+      containers:
+      - name: lite
+        image: ghcr.io/fivemanage/lite:0.1.0-beta.23
+        ports:
+        - containerPort: 8080
+        env:
+        - name: PORT
+          value: "8080"
+        - name: DSN
+          valueFrom:
+            secretKeyRef:
+              name: fivemanage-secrets
+              key: DSN
+        - name: CLICKHOUSE_HOST
+          value: "clickhouse:9000"
+        - name: CLICKHOUSE_USERNAME
+          value: "default"
+        - name: CLICKHOUSE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: fivemanage-secrets
+              key: CLICKHOUSE_PASSWORD
+        - name: CLICKHOUSE_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: fivemanage-secrets
+              key: CLICKHOUSE_DATABASE
+        - name: ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: fivemanage-secrets
+              key: ADMIN_PASSWORD
+        - name: API_TOKEN_HMAC_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: fivemanage-secrets
+              key: API_TOKEN_HMAC_SECRET
+        - name: S3_PROVIDER
+          value: "minio"
+        - name: AWS_ACCESS_KEY_ID
+          value: "minioadmin"
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: fivemanage-secrets
+              key: MINIO_ROOT_PASSWORD
+        - name: AWS_ENDPOINT
+          value: "http://minio:9000"
+        - name: AWS_BUCKET
+          valueFrom:
+            secretKeyRef:
+              name: fivemanage-secrets
+              key: AWS_BUCKET
+        - name: AWS_REGION
+          value: "us-east-1"
+        - name: ENV
+          value: "production"
+        - name: BUCKET_DOMAIN
+          valueFrom:
+            secretKeyRef:
+              name: fivemanage-secrets
+              key: BUCKET_DOMAIN
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fivemanage-lite
+  namespace: platform
+spec:
+  selector:
+    app: fivemanage-lite
+  ports:
+  - port: 80
+    targetPort: 8080
